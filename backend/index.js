@@ -4,7 +4,7 @@ const config = require("./config.json");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-mongoose.connect(config.connectionString);
+mongoose.connect(process.env.MONGO_URI);
 
 const User = require("./models/user.model");
 const Note = require("./models/notes.model");
