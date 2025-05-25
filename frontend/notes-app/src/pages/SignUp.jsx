@@ -2,13 +2,16 @@ import React, { useState } from "react";
 import Navbar from "../components/Navbar";
 import PasswordInput from "../components/PasswordInput";
 import { validateEmail } from "../utils/helper";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axiosInstance from "../utils/axiosInstance";
 
 const SignUp = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+
+  const navigate = useNavigate();
 
   const handleSignUp = async (e) => {
     e.preventDefault();
@@ -29,6 +32,36 @@ const SignUp = () => {
     }
 
     setError("");
+
+    try {
+      const response = await axiosInstance.post("/create-account", {
+        fullName: name,
+        email: email,
+        password: password,
+      });
+
+      //handle successfull Signup response
+      if (response.data && response.data.error) {
+        setError(response.data.message);
+        return;
+      }
+
+      if (response.data && response.data.accessToken) {
+        localStorage.setItem("token", response.data.accessToken);
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      //handle login error
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        setError(error.response.data.message);
+      } else {
+        setError("An unexpected error occured. Please try again.");
+      }
+    }
   };
   return (
     <>
@@ -40,7 +73,7 @@ const SignUp = () => {
 
             <input
               type="text"
-              placeholder="Email"
+              placeholder="Name"
               className="input-box"
               value={name}
               onChange={(e) => setName(e.target.value)}

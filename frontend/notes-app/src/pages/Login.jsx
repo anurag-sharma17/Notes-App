@@ -38,7 +38,7 @@ const Login = () => {
         navigate("/dashboard");
       }
     } catch (error) {
-      //handle error
+      //handle login error
       if (
         error.response &&
         error.response.data &&

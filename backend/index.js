@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const config = require("./config.json");
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 mongoose.connect(config.connectionString);
 
@@ -56,10 +57,14 @@ app.post("/create-account", async (req, res) => {
     });
   }
 
+  // Hash password before saving
+  const saltRounds = 10;
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
+
   const user = new User({
     fullName,
     email,
-    password,
+    password: hashedPassword,
   });
 
   await user.save();
@@ -97,7 +102,10 @@ app.post("/login", async (req, res) => {
     });
   }
 
-  if (userInfo.email == email && userInfo.password == password) {
+  // Compare hashed password
+  const isPasswordValid = await bcrypt.compare(password, userInfo.password);
+
+  if (userInfo.email === email && isPasswordValid) {
     const user = { user: userInfo };
     const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
       expiresIn: "36000m",
@@ -134,7 +142,7 @@ app.get("/get-user", authenticateToken, async (req, res) => {
       createdOn: isUser.createdOn,
     },
     message: "",
-  }); 
+  });
 });
 
 // Add Note
@@ -280,6 +288,39 @@ app.put("/update-note-pinned/:noteId", authenticateToken, async (req, res) => {
     });
   }
 });
+
+app.get("/search-notes/", authenticateToken, async (req, res) => {
+  const { user } = req.user;
+  const { query } = req.query;
+
+  if (!query) {
+    return res
+      .status(400)
+      .json({ error: true, message: "Search query is required" });
+  }
+
+  try {
+    const matchingNotes = await Note.find({
+      userId: user._id,
+      $or: [
+        { title: { $regex: new RegExp(query, "i") } },
+        { content: { $regex: new RegExp(query, "i") } },
+      ],
+    });
+
+    return res.json({
+      error: false,
+      notes: matchingNotes,
+      message: "Notes matching the search query retrieved successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: true,
+      message: "Internal Server Error",
+    });
+  }
+});
+
 app.listen(8000);
 
 module.exports = app;
